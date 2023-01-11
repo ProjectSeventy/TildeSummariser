@@ -7,18 +7,22 @@ class TildeSummariser():
     
     def __init__(
         self,
-        curve_coefficients = (
-            0.00025,
-            -0.0325,
-            0.705,
-            34.785,
-        ),
+        curve_coefficients = None,
         text_seg = None,
         topic_ident = None,
         rte = None,
     ):
-        self.curve_coefficients = curve_coefficients
         self.nlp = spacy.load("en_core_web_sm")
+        
+        if curve_coefficients == None:
+            self.curve_coefficients = [
+                0.00025,
+                -0.0325,
+                0.705,
+                34.785,
+            ]
+        else:
+            self.curve_coefficients = curve_coefficients
         
         if text_seg == None:
             self.text_seg = C99Segmenter()
@@ -59,16 +63,16 @@ class TildeSummariser():
                 n_segment = self._get_segment_length_from_curve(perc)
                 
             #Get the summary sentences for the segment
-            all_summary_sentences += self.summarise_segment(segments[i], segments_sented[i], n_segment)
+            all_summary_sentences += self._summarise_segment(segments[i], segments_sented[i], n_segment)
 
         #Convert all summaries to one doc and generate a summary of them
         summary_sentences_as_doc = list(self.nlp.pipe(all_summary_sentences))
         summary_sentences_as_doc = spacy.tokens.Doc.from_docs(summary_sentences_as_doc)
-        final_summary_sentences = self.summarise_segment(summary_sentences_as_doc, list(summary_sentences_as_doc.sents), n_total)
+        final_summary_sentences = self._summarise_segment(summary_sentences_as_doc, list(summary_sentences_as_doc.sents), n_total)
         
         return final_summary_sentences
     
-    def summarise_segment(self, segment, sent_list, num_sentences):
+    def _summarise_segment(self, segment, sent_list, num_sentences):
         ranked_keywords, ranked_scores = self.topic_ident.get_topics(segment)
     
         noun_phrases = list(segment.noun_chunks)
