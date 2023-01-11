@@ -1,7 +1,7 @@
 import spacy
 import math
 
-from TildeSummariser.utils.components.base_components import TextSegmenter
+from tilde.utils.components.base_components import TextSegmenter
 
 
 class C99Segmenter(TextSegmenter):
@@ -151,7 +151,7 @@ class C99Segmenter(TextSegmenter):
                 break
             for i in range(1, num_units):
                 if i not in divisions:
-                    densities.append(calculate_density_from_divisions(para_matrix, divisions.copy() + [i]))
+                    densities.append(self._calculate_density_from_divisions(para_matrix, divisions.copy() + [i]))
                     new_divs.append(i)
             if max(densities) > density:
                 density = max(densities)

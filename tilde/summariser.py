@@ -1,6 +1,6 @@
 import spacy
 
-from TildeSummariser.utils import C99Segmenter, FastRAKE, SimpleRTE, rank_sentences_for_relevance, ranked_sentences_to_summary_with_redundancy_detection
+from tilde.utils import C99Segmenter, FastRAKE, SimpleRTE, rank_sentences_for_relevance, ranked_sentences_to_summary_with_redundancy_detection
 
 
 class TildeSummariser():
@@ -62,7 +62,7 @@ class TildeSummariser():
             all_summary_sentences += self.summarise_segment(segments[i], segments_sented[i], n_segment)
 
         #Convert all summaries to one doc and generate a summary of them
-        summary_sentences_as_doc = list(nlp.pipe(all_summary_sentences))
+        summary_sentences_as_doc = list(self.nlp.pipe(all_summary_sentences))
         summary_sentences_as_doc = spacy.tokens.Doc.from_docs(summary_sentences_as_doc)
         final_summary_sentences = self.summarise_segment(summary_sentences_as_doc, list(summary_sentences_as_doc.sents), n_total)
         
@@ -83,17 +83,3 @@ class TildeSummariser():
             num_sentences += pow(midpoint_percentage, i)*self.curve_coefficients[i]
         num_sentences = round(num_sentences)
         return num_sentences
-
-if __name__ == "__main__":
-    input_file_path = ""
-    output_file_path = ""
-    
-    with open(input_file_path, 'r', encoding='utf-8-sig') as f:
-        content = f.readlines()
-    
-    summariser = TildeSummariser()
-    summary = summariser.summarise(content, 100)
-    prose_summary = " ".join([str(sent) for sent in summary])
-    
-    with open(output_file_path, 'w', encoding='utf-8-sig') as f:
-        f.write(prose_summary)
