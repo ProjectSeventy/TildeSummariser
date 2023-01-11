@@ -75,6 +75,7 @@ class TildeSummariser():
         ranked_sentences = rank_sentences_for_relevance(sent_list, noun_phrases, ranked_keywords, ranked_scores)
         
         summary_sentences = ranked_sentences_to_summary_with_redundancy_detection(sent_list, ranked_sentences, num_sentences, self.rte)
+        summary_sentences = [sentence.rstrip() for sentence in summary_sentences]
         return summary_sentences
     
     def _get_segment_length_from_curve(self, midpoint_percentage):
