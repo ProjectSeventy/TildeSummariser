@@ -1,6 +1,7 @@
+import spacy
+
 from TildeSummariser.utils import C99Segmenter, FastRAKE, SimpleRTE, rank_sentences_for_relevance, ranked_sentences_to_summary_with_redundancy_detection
 
-import spacy
 
 class TildeSummariser():
     
@@ -34,23 +35,7 @@ class TildeSummariser():
         else:
             self.rte = rte
     
-    def _get_segment_length_from_curve(self, midpoint_percentage):
-        num_sentences = 0
-        for i in range(len(self.curve_coefficients), 0, step=-1):
-            num_sentences += pow(midpoint_percentage, i)*self.curve_coefficients[i]
-        num_sentences = round(num_sentences)
-        return num_sentences
-
-    def summarise_segment(self, segment, sent_list, num_sentences):
-        ranked_keywords, ranked_scores = self.topic_ident.get_topics(segment)
-    
-        noun_phrases = list(segment.noun_chunks)
-        ranked_sentences = rank_sentences_for_relevance(sent_list, noun_phrases, ranked_keywords, ranked_scores)
-        
-        summary_sentences = ranked_sentences_to_summary_with_redundancy_detection(sent_list, ranked_sentences, num_sentences, self.rte)
-        return summary_sentences
-
-    def summarise(self, content, n_segment, n_total, dynamic_flag = False):
+    def summarise(self, content, n_total, n_segment = 20, dynamic_flag = False):
         #pre-process
         content = list(self.nlp.pipe(content))
         content = [doc for doc in content if not (len(doc) == 1 and doc[0].text == '\n')]
@@ -82,3 +67,33 @@ class TildeSummariser():
         final_summary_sentences = self.summarise_segment(summary_sentences_as_doc, list(summary_sentences_as_doc.sents), n_total)
         
         return final_summary_sentences
+    
+    def summarise_segment(self, segment, sent_list, num_sentences):
+        ranked_keywords, ranked_scores = self.topic_ident.get_topics(segment)
+    
+        noun_phrases = list(segment.noun_chunks)
+        ranked_sentences = rank_sentences_for_relevance(sent_list, noun_phrases, ranked_keywords, ranked_scores)
+        
+        summary_sentences = ranked_sentences_to_summary_with_redundancy_detection(sent_list, ranked_sentences, num_sentences, self.rte)
+        return summary_sentences
+    
+    def _get_segment_length_from_curve(self, midpoint_percentage):
+        num_sentences = 0
+        for i in range(len(self.curve_coefficients), 0, step=-1):
+            num_sentences += pow(midpoint_percentage, i)*self.curve_coefficients[i]
+        num_sentences = round(num_sentences)
+        return num_sentences
+
+if __name__ == "__main__":
+    input_file_path = ""
+    output_file_path = ""
+    
+    with open(input_file_path, 'r', encoding='utf-8-sig') as f:
+        content = f.readlines()
+    
+    summariser = TildeSummariser()
+    summary = summariser.summarise(content, 100)
+    prose_summary = " ".join([str(sent) for sent in summary])
+    
+    with open(output_file_path, 'w', encoding='utf-8-sig') as f:
+        f.write(prose_summary)
