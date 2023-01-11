@@ -33,8 +33,8 @@ class C99Segmenter(TextSegmenter):
         divisions = self._get_optimal_divisions(divisions, density_history)
         
         #Return optimal segments as span and list of sentences
-        segments = self._get_segments_from_divisions(content, divisions, unit_lengths)
-        return segments
+        segments, segments_sented = self._get_segments_from_divisions(content, divisions, unit_lengths)
+        return segments, segments_sented
     
     #Resize the docs in the input to each be one unit
     def _resize_units(self, content):
