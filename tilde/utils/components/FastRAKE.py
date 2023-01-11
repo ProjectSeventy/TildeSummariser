@@ -1,4 +1,4 @@
-from TildeSummariser.utils.components.base_components import TopicExtractor
+from tilde.utils.components.base_components import TopicExtractor
 
 
 class FastRAKE(TopicExtractor):
@@ -10,9 +10,9 @@ class FastRAKE(TopicExtractor):
     #Get a list of keywords form a text
     def get_topics(self, segment, n_keywords=10):
         candidates, appearances, member_words = self._identify_candidates(segment)
-        candidates_no_duplication, keyword_scores, candidate_appearances = self.score_all(member_words, candidates, appearances)
-        ranked_keywords, ranked_scores = self.prune_candidates(candidates_no_duplication, keyword_scores, candidate_appearances)
-        ranked_keywords, ranked_scores = self.trim_keyword_list(ranked_keywords, ranked_scores, n_keywords)
+        candidates_no_duplication, keyword_scores, candidate_appearances = self._score_all(member_words, candidates, appearances)
+        ranked_keywords, ranked_scores = self._prune_candidates(candidates_no_duplication, keyword_scores, candidate_appearances)
+        ranked_keywords, ranked_scores = self._trim_keyword_list(ranked_keywords, ranked_scores, n_keywords)
         return ranked_keywords, ranked_scores
 
     #Identify all candidate keywords in a text, their member words, and their appearances
@@ -24,11 +24,11 @@ class FastRAKE(TopicExtractor):
         
         current_cand = [] #used to build a potential keyword a token at a time
         
-        for tok in doc:
+        for i, tok in enumerate(doc):
             
             tok_text = tok.text.lower()
             #If a token is of the correct part of speech, add it to current_cand and if the token is not yet in member_words, add it
-            if (tok.pos_ in simple_whitelist or f"{tok.pos_}:{tok.tag_}" in fine_grain_whitelist) and not (tok.is_punct or tok.is_stop):
+            if (tok.pos_ in self.simple_whitelist or f"{tok.pos_}:{tok.tag_}" in self.fine_grain_whitelist) and not (tok.is_punct or tok.is_stop):
                 current_cand.append(tok_text)
                 if tok_text not in member_words:
                     member_words.append(tok_text)
@@ -96,9 +96,9 @@ class FastRAKE(TopicExtractor):
     #Calculate the scores of each member word and from there, each candidate keyword
     def _score_all(self, member_words, candidates, appearances):
         
-        word_matrix = self.make_word_matrix(candidates, member_words)
+        word_matrix = self._make_word_matrix(candidates, member_words)
         word_scores = [max(row) for row in word_matrix]
-        candidates_no_duplication, keyword_scores, candidate_appearances = self.score_keywords(member_words, word_scores, candidates, appearances)
+        candidates_no_duplication, keyword_scores, candidate_appearances = self._score_keywords(member_words, word_scores, candidates, appearances)
         
         return candidates_no_duplication, keyword_scores, candidate_appearances
 

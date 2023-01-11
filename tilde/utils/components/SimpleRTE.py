@@ -1,6 +1,6 @@
 from nltk.corpus import wordnet
 
-from TildeSummariser.utils.components.base_components import RedundancyDetector
+from tilde.utils.components.base_components import RedundancyDetector
 
     
 class SimpleRTE(RedundancyDetector):
@@ -133,7 +133,7 @@ class SimpleRTE(RedundancyDetector):
         
         syns = wordnet.synsets(word)
         #Get all lemmas of synonyms
-        synset = _get_lemma_names_from_synset(syns)
+        synset = self._get_lemma_names_from_synset(syns)
         
         hyponyms = []
         hypernyms = []
