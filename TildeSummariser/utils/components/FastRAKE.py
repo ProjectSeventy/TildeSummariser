@@ -1,3 +1,6 @@
+from TildeSummariser.utils.components.base_components import TopicExtractor
+
+
 class FastRAKE(TopicExtractor):
     
     def __init__(self):

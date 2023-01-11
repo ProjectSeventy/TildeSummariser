@@ -1,4 +1,7 @@
 from nltk.corpus import wordnet
+
+from TildeSummariser.utils.components.base_components import RedundancyDetector
+
     
 class SimpleRTE(RedundancyDetector):
     
@@ -25,6 +28,24 @@ class SimpleRTE(RedundancyDetector):
             "pcomp",
             "xcomp"
         ]
+    
+    #Check if a given text entails another
+    def check_entailment(self, text, hypo):
+        
+        #Split both texts into elements and entities
+        text_elems, hypo_elems = self._get_all_elements(text, hypo)
+        text_ents, hypo_ents = self._get_all_named_entities(text, hypo)
+        
+        #Calculate the negation, entity overlap, and element overlap scores for the texts
+        neg_score = self._calculate_overall_negation_score(text, hypo)
+        elem_score = self._calculate_element_score(text_elems, hypo_elems)
+        ent_score = self._calculate_entity_score(text_ents, hypo_ents)
+        
+        #Overall score is the weighted average of the entity and element scores, minus the negation score.
+        overall_score = (((elem_score*self.element_weight) + (ent_score*self.entity_weight) ) / (self.element_weight + self.entity_weight)) - neg_score
+
+        #Return true if score is greater than the threshold
+        return overall_score > self.threshold
     
     #Return a list of words that are children to the given one in the dependency tree, that are subjects or objects
     def _get_children(self, token, child_list, strin):
@@ -167,21 +188,3 @@ class SimpleRTE(RedundancyDetector):
         ent_score = (ent_score + 1) / (len(hypo_ents) + 1)
 
         return ent_score
-    
-    #Check if a given text entails another
-    def check_entailment(self, text, hypo):
-        
-        #Split both texts into elements and entities
-        text_elems, hypo_elems = self._get_all_elements(text, hypo)
-        text_ents, hypo_ents = self._get_all_named_entities(text, hypo)
-        
-        #Calculate the negation, entity overlap, and element overlap scores for the texts
-        neg_score = self._calculate_overall_negation_score(text, hypo)
-        elem_score = self._calculate_element_score(text_elems, hypo_elems)
-        ent_score = self._calculate_entity_score(text_ents, hypo_ents)
-        
-        #Overall score is the weighted average of the entity and element scores, minus the negation score.
-        overall_score = (((elem_score*self.element_weight) + (ent_score*self.entity_weight) ) / (self.element_weight + self.entity_weight)) - neg_score
-
-        #Return true if score is greater than the threshold
-        return overall_score > self.threshold

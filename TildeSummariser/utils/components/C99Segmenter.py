@@ -1,8 +1,41 @@
 import spacy
 import math
 
+from TildeSummariser.utils.components.base_components import TextSegmenter
+
+
 class C99Segmenter(TextSegmenter):
 
+    #Get the optimal segments from a given text
+    def get_segments(self, content):
+        content = self._resize_units(content)
+        
+        #Get the number of sentences in each unit, and the number of units
+        unit_lengths = [len(list(doc.sents)) for doc in content]
+        num_units = len(unit_lengths)
+        
+        #Generate a lemma frequency dictionary for each unit
+        all_lemma_freqs = self._get_lemma_freqs(content)
+        
+        #Merge all the dicitonaries into one with a list of frequencies, one for each unit
+        lemma_freqs = self._merge_lemma_dictionaries(all_lemma_freqs)
+        
+        #Merge all the units into one doc
+        content = spacy.tokens.Doc.from_docs(content)
+        
+        #Generate unit similarity matrix
+        para_matrix = self._generate_unit_similarity_matrix(num_units, lemma_freqs)
+        
+        #Get ordered list of optimal divisions, and their densities
+        divisions, density_history = self._get_optimal_division_list(para_matrix, num_units)
+        
+        #Find optimal divisions for segmentation
+        divisions = self._get_optimal_divisions(divisions, density_history)
+        
+        #Return optimal segments as span and list of sentences
+        segments = self._get_segments_from_divisions(content, divisions, unit_lengths)
+        return segments
+    
     #Resize the docs in the input to each be one unit
     def _resize_units(self, content):
         n=1
@@ -165,33 +198,3 @@ class C99Segmenter(TextSegmenter):
             last = divisions[i]
               
         return segments, segments_sented
-
-    #Get the optimal segments from a given text
-    def get_segments(self, content):
-        content = self._resize_units(content)
-        
-        #Get the number of sentences in each unit, and the number of units
-        unit_lengths = [len(list(doc.sents)) for doc in content]
-        num_units = len(unit_lengths)
-        
-        #Generate a lemma frequency dictionary for each unit
-        all_lemma_freqs = self._get_lemma_freqs(content)
-        
-        #Merge all the dicitonaries into one with a list of frequencies, one for each unit
-        lemma_freqs = self._merge_lemma_dictionaries(all_lemma_freqs)
-        
-        #Merge all the units into one doc
-        content = spacy.tokens.Doc.from_docs(content)
-        
-        #Generate unit similarity matrix
-        para_matrix = self._generate_unit_similarity_matrix(num_units, lemma_freqs)
-        
-        #Get ordered list of optimal divisions, and their densities
-        divisions, density_history = self._get_optimal_division_list(para_matrix, num_units)
-        
-        #Find optimal divisions for segmentation
-        divisions = self._get_optimal_divisions(divisions, density_history)
-        
-        #Return optimal segments as span and list of sentences
-        segments = self._get_segments_from_divisions(content, divisions, unit_lengths)
-        return segments
