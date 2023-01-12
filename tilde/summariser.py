@@ -1,8 +1,9 @@
 from typing import List
 
 import spacy
+import numpy as np
 
-from tilde.utils import *
+from tilde.components import *
 
 
 class TildeSummariser():
@@ -109,11 +110,78 @@ class TildeSummariser():
         ranked_keywords, ranked_scores = self.topic_ident.get_topics(segment)
     
         noun_phrases = list(segment.noun_chunks)
-        ranked_sentences = rank_sentences_for_relevance(sent_list, noun_phrases, ranked_keywords, ranked_scores)
+        ranked_sentences = self._rank_sentences_for_relevance(sent_list, noun_phrases, ranked_keywords, ranked_scores)
         
-        summary_sentences = ranked_sentences_to_summary_with_redundancy_detection(sent_list, ranked_sentences, num_sentences, self.rte)
+        summary_sentences = self._ranked_sentences_to_summary_with_redundancy_detection(sent_list, ranked_sentences, num_sentences)
         summary_sentences = [sentence.rstrip() for sentence in summary_sentences]
         return summary_sentences
+    
+    def _rank_sentences_for_relevance(self, sents, noun_phrases, ranked_keywords, ranked_scores):
+        """Rank sentences based on their relevence to a set of keywords, and number of noun phrases"""
+        
+        sent_scores = []
+        ret_sents = []
+        current_score = 0
+        current_sent = sents[0]
+        num_NPs = 0
+        
+        for i in range(len(noun_phrases)):
+            #Calculate score based on score of keywords within noun phrase
+            np = str(noun_phrases[i]).lower()
+            sc = 0
+            for j in range(0, len(ranked_keywords)):
+                kws = " ".join(ranked_keywords[j])
+                sc += (np.count(kws) * ranked_scores[j])
+            
+            if noun_phrases[i].sent == current_sent:
+                current_score += sc
+                num_NPs += 1
+            else:
+                sent_scores.append(num_NPs*current_score)
+                ret_sents.append(current_sent)
+                current_sent = noun_phrases[i].sent
+                current_score = sc
+                num_NPs = 1
+
+        sent_scores.append(num_NPs*current_score)
+        ret_sents.append(current_sent)
+        
+        ranked_sents = [sent for score, sent in sorted(zip(sent_scores, ret_sents), key = lambda score: score[0], reverse = True)]
+        
+        return ranked_sents
+
+    def _ranked_sentences_to_summary(self, sents, ranked_sents, summary_length):
+        """Create a summary from a list of ranked sentences"""
+        
+        ranked_sents = ranked_sents[0:summary_length]
+        summary = []
+        
+        for sent in sents:
+            if sent in ranked_sents:
+                summary.append(str(sent))
+        
+        return summary
+
+    def _ranked_sentences_to_summary_with_redundancy_detection(self, sents, ranked_sents, summary_length):
+        """Create a summary from a list of ranked sentences, removing redundant sentences"""
+        
+        summary_sents = [ranked_sents[0]]
+        i = 1
+        while len(summary_sents) < summary_length and i < len(ranked_sents):
+            entailed = False
+            
+            for j in range(0, len(summary_sents)):
+                if self.rte.check_entailment(summary_sents[j], ranked_sents[i]):
+                    entailed = True
+                    break
+            
+            if not entailed:
+                summary_sents.append(ranked_sents[i])
+            
+            i += 1
+        
+        summary = self._ranked_sentences_to_summary(sents, summary_sents, summary_length)
+        return summary
     
     def _get_segment_length_from_curve(self, midpoint_percentage):
         """Calculate the number of sentences to extract"""

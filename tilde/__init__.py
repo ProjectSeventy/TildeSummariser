@@ -1,2 +1,2 @@
 from tilde.summariser import TildeSummariser
-from tilde.utils import TextSegmenter, TopicExtractor, RedundancyDetector
+from tilde.components import TextSegmenter, TopicExtractor, RedundancyDetector

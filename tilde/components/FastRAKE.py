@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from spacy.tokens.span import Span
 
-from tilde.utils.components.base_components import TopicExtractor
+from tilde.components.base_components import TopicExtractor
 
 
 class FastRAKE(TopicExtractor):
