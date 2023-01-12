@@ -4,7 +4,7 @@ from typing import Tuple, List
 from spacy.tokens.doc import Doc
 from spacy.tokens.span import Span
 
-from tilde.utils.components.base_components import TextSegmenter
+from tilde.components.base_components import TextSegmenter
 
 
 class C99Segmenter(TextSegmenter):

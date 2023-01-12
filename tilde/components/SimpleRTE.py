@@ -1,7 +1,7 @@
 from spacy.tokens.span import Span
 from nltk.corpus import wordnet
 
-from tilde.utils.components.base_components import RedundancyDetector
+from tilde.components.base_components import RedundancyDetector
 
     
 class SimpleRTE(RedundancyDetector):
