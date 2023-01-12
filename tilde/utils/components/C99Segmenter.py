@@ -41,7 +41,6 @@ class C99Segmenter(TextSegmenter):
         lemma_freqs = self._merge_lemma_dictionaries(all_lemma_freqs)
         
         #Merge all the units into one doc
-        #content = spacy.tokens.Doc.from_docs(content)
         content = Doc.from_docs(content)
         
         #Generate unit similarity matrix
@@ -75,10 +74,8 @@ class C99Segmenter(TextSegmenter):
             new_content = []
             for i in range(0, length, n):
                 if i+n < len(content):
-                    #new_content.append(spacy.tokens.Doc.from_docs(content[i:i+n]))
                     new_content.append(Doc.from_docs(content[i:i+n]))
                 else:
-                    #new_content.append(spacy.tokens.Doc.from_docs(content[i:]))
                     new_content.append(Doc.from_docs(content[i:]))
             
             content = new_content
