@@ -1,13 +1,33 @@
-import spacy
 import math
+from typing import Tuple, List
+
+from spacy.tokens.doc import Doc
+from spacy.tokens.span import Span
 
 from tilde.utils.components.base_components import TextSegmenter
 
 
 class C99Segmenter(TextSegmenter):
 
-    #Get the optimal segments from a given text
-    def get_segments(self, content):
+    """
+    A class implementing a simple text segmentation algorithm
+    """
+
+    def get_segments(
+        self,
+        content: List[Doc],
+    ) -> Tuple[List[Span], List[List[Span]]]:
+        """
+        Get the optimal segments from a given text
+
+        Args:
+            content: A list of spaCy Docs representing the full text broken into
+                super-sentential units - preferably paragraphs
+        Returns:
+            A list of spaCy Spans, one for each segment
+            A list of lists of spaCy Spans, each segment broken into sentences
+        """
+        
         content = self._resize_units(content)
         
         #Get the number of sentences in each unit, and the number of units
@@ -21,7 +41,8 @@ class C99Segmenter(TextSegmenter):
         lemma_freqs = self._merge_lemma_dictionaries(all_lemma_freqs)
         
         #Merge all the units into one doc
-        content = spacy.tokens.Doc.from_docs(content)
+        #content = spacy.tokens.Doc.from_docs(content)
+        content = Doc.from_docs(content)
         
         #Generate unit similarity matrix
         para_matrix = self._generate_unit_similarity_matrix(num_units, lemma_freqs)
@@ -36,8 +57,9 @@ class C99Segmenter(TextSegmenter):
         segments, segments_sented = self._get_segments_from_divisions(content, divisions, unit_lengths)
         return segments, segments_sented
     
-    #Resize the docs in the input to each be one unit
     def _resize_units(self, content):
+        """Resize the docs in the input to each be one unit"""
+        
         n=1
         length = len(content)
         if length > 300:
@@ -53,15 +75,18 @@ class C99Segmenter(TextSegmenter):
             new_content = []
             for i in range(0, length, n):
                 if i+n < len(content):
-                    new_content.append(spacy.tokens.Doc.from_docs(content[i:i+n]))
+                    #new_content.append(spacy.tokens.Doc.from_docs(content[i:i+n]))
+                    new_content.append(Doc.from_docs(content[i:i+n]))
                 else:
-                    new_content.append(spacy.tokens.Doc.from_docs(content[i:]))
+                    #new_content.append(spacy.tokens.Doc.from_docs(content[i:]))
+                    new_content.append(Doc.from_docs(content[i:]))
             
             content = new_content
         return content
 
-    #Get frequency of lemmas in a specific doc
     def _get_lemma_freqs(self, content):
+        """Get frequency of lemmas in a specific doc"""
+
         all_lemma_freqs = []
         for unit in content:
             lemma_freq = {}
@@ -73,8 +98,9 @@ class C99Segmenter(TextSegmenter):
         
         return all_lemma_freqs
 
-    #Merge several lemma frequency dictionaries into one
     def _merge_lemma_dictionaries(self, all_lemma_freqs):
+        """Merge several lemma frequency dictionaries into one"""
+
         lemma_freqs = {}
         for i in range(0, len(all_lemma_freqs)):
             for word in all_lemma_freqs[i].keys():
@@ -86,15 +112,14 @@ class C99Segmenter(TextSegmenter):
         
         return lemma_freqs
 
-    #Generate a matrix of similarity scores between all pairs of units
     def _generate_unit_similarity_matrix(self, num_units, lemma_freqs):
-        #Construct an empty matrix representing each unit occuring with itself
+        """Generate a matrix of similarity scores between all pairs of units"""
+
         para_matrix = []
         for i in range(0, num_units):
             para_row = [0] * num_units
             para_matrix.append(para_row)
 
-        #For each pair of units, fill their cells with the cosine difference between their lemma freqs
         for i in range(0, num_units):
             for j in range(i, num_units):
                 #Calculate cosine similarity
@@ -119,12 +144,14 @@ class C99Segmenter(TextSegmenter):
         
         return para_matrix
 
-    #Calculate the density of the unit matrix with the specified divisions
     def _calculate_density_from_divisions(self, para_matrix, divisions):
+        """Calculate the density of the unit matrix with the specified divisions"""
+
         divisions = sorted(divisions)
         nums = []
         denoms = []
         prev_div = 0
+        
         #For each cell in each division, add the value to the numerator and 1 to the denominator
         for div in divisions:
             num = 0
@@ -137,8 +164,9 @@ class C99Segmenter(TextSegmenter):
             denoms.append(denom)
         return (sum(nums)/sum(denoms))
 
-    #Get an ordered list of the most optimal division of the unit similarity matrix
     def _get_optimal_division_list(self, para_matrix, num_units):
+        """Get an ordered list of the most optimal division of the unit similarity matrix"""
+        
         divisions = [num_units]
         density = self._calculate_density_from_divisions(para_matrix, divisions.copy())
         density_history = [density]
@@ -163,8 +191,9 @@ class C99Segmenter(TextSegmenter):
         
         return divisions, density_history
 
-    #Get the divisions corresponding with the optimal segmentation
     def _get_optimal_divisions(self, divisions, density_history):
+        """Get the divisions corresponding with the optimal segmentation"""
+
         delta_density = density_history[1:]
         for i in range(0, len(delta_density)):
             delta_density[i] = delta_density[i] - density_history[i]
@@ -180,8 +209,9 @@ class C99Segmenter(TextSegmenter):
         
         return sorted(divisions)
 
-    #Get the text of each segment, based on a given set of divisions
     def _get_segments_from_divisions(self, content, divisions, unit_lengths):
+        """Get the text of each segment, based on a given set of divisions"""
+        
         segments = []
         segments_sented = []
         sents = list(content.sents)

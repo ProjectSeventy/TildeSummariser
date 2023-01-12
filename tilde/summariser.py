@@ -1,17 +1,35 @@
+from typing import List
+
 import spacy
 
-from tilde.utils import C99Segmenter, FastRAKE, SimpleRTE, rank_sentences_for_relevance, ranked_sentences_to_summary_with_redundancy_detection
+from tilde.utils import *
 
 
 class TildeSummariser():
     
+    """
+    A class implementing the TildeSummariser
+    """
+    
     def __init__(
         self,
-        curve_coefficients = None,
-        text_seg = None,
-        topic_ident = None,
-        rte = None,
+        curve_coefficients: List[float] = None,
+        text_seg: TextSegmenter = None,
+        topic_ident: TopicExtractor = None,
+        rte: RedundancyDetector = None,
     ):
+        """
+        Initialises the summariser
+
+        Args:
+            curve_coefficients: A list of float coefficients defining a polynomial.
+                This is the curve used with TildeDynamic to determine the number of
+                sentences to take from each segment.
+            text_seg: A TextSegmenter to use to segment the text
+            topic_ident: A TopicExtractor to use to extract keyword topics
+            rte: A RedundancyDetector to use to determine if a sentence implies another
+        """
+
         self.nlp = spacy.load("en_core_web_sm")
         
         if curve_coefficients == None:
@@ -39,12 +57,30 @@ class TildeSummariser():
         else:
             self.rte = rte
     
-    def summarise(self, content, n_total, n_segment = 20, dynamic_flag = False):
-        #pre-process
+    def summarise(
+        self,
+        content: List[str],
+        n_total: int,
+        n_segment: int = 20,
+        dynamic_flag: bool = False
+    ) -> List[str]:
+        """
+        A method to summarise a given text
+
+        Args:
+            content: A list of strings of the text to summarise. Each string should be a
+                unit larger than a sentence. Paragraphs are preferable.
+            n_total: An int of the number of sentences to include in the summary
+            n_segment: An int of the number of sentences to extract from each segment, when
+                using TildeFixed
+            dynamic_flag: A boolean indicator of whether to use TildeFixed or TildeDynamic
+        Returns:
+            A summary of the text, as a list of sentences
+        """
+        
         content = list(self.nlp.pipe(content))
         content = [doc for doc in content if not (len(doc) == 1 and doc[0].text == '\n')]
         
-        #Segment
         segments, segments_sented = self.text_seg.get_segments(content)
         
         all_summary_sentences = []
@@ -52,20 +88,15 @@ class TildeSummariser():
         len_all_seg = sum([len(seg) for seg in segments_sented])
         
         for i in range(0, len(segments)):
-            #If synamic segment lengths, calculate length
             if dynamic_flag:
-                #Find the last sentence
+                #Calculate required number of sentences
                 last_sent = len(segments_sented[i]) + len_prev_seg
                 len_prev_seg = last_sent
-                #Get the midpoint of the segment as a percentage of the full text
                 perc = ((last_sent - (len(segments_sented[i])/2))/len_all_seg)*100
-                #Calculate the length according to the curve
                 n_segment = self._get_segment_length_from_curve(perc)
                 
-            #Get the summary sentences for the segment
             all_summary_sentences += self._summarise_segment(segments[i], segments_sented[i], n_segment)
 
-        #Convert all summaries to one doc and generate a summary of them
         summary_sentences_as_doc = list(self.nlp.pipe(all_summary_sentences))
         summary_sentences_as_doc = spacy.tokens.Doc.from_docs(summary_sentences_as_doc)
         final_summary_sentences = self._summarise_segment(summary_sentences_as_doc, list(summary_sentences_as_doc.sents), n_total)
@@ -73,6 +104,8 @@ class TildeSummariser():
         return final_summary_sentences
     
     def _summarise_segment(self, segment, sent_list, num_sentences):
+        """Summarise a given segment of text"""
+
         ranked_keywords, ranked_scores = self.topic_ident.get_topics(segment)
     
         noun_phrases = list(segment.noun_chunks)
@@ -83,6 +116,8 @@ class TildeSummariser():
         return summary_sentences
     
     def _get_segment_length_from_curve(self, midpoint_percentage):
+        """Calculate the number of sentences to extract"""
+
         num_sentences = 0
         for i in range(len(self.curve_coefficients), 0, step=-1):
             num_sentences += pow(midpoint_percentage, i)*self.curve_coefficients[i]
