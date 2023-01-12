@@ -1,18 +1,53 @@
+from typing import List, Tuple
+
+from spacy.tokens.span import Span
+
 from tilde.utils.components.base_components import TopicExtractor
 
 
 class FastRAKE(TopicExtractor):
     
+    """
+    A class implementing FastRAKE
+    
+    FastRAKE is a modified version of RAKE that skips selecting compound
+    keywords, a slow process that doesn't add to summarisation capability
+    """
+    
     def __init__(self):
+        """
+        Initialises the FastRAKE class
+        """
         self.simple_whitelist = ["NOUN", "PROPN", "ADJ"] 
         self.fine_grain_whitelist = ["VERB:VBG"] 
 
-    #Get a list of keywords form a text
-    def get_topics(self, segment, n_keywords=10):
+    def get_topics(
+        self,
+        segment: Span,
+        n_keywords: int = 10
+    ) -> Tuple[List[List[str]], List[int]]:
+        """
+        Get a list of keyword topics from a text
+
+        Args:
+            segment: A spaCy Span of the segment to extract keyword topics from
+            n_keywords: An int of the number of keyword topics to extract
+        Returns:
+            A list of keyword topics - each a list of strings
+            A corresponding list of keyword scores
+        """
+        
+        #Identify candidate keywords and phrases, where they appear, and the words they consist of
         candidates, appearances, member_words = self._identify_candidates(segment)
-        candidates_no_duplication, keyword_scores, candidate_appearances = self._score_all(member_words, candidates, appearances)
-        ranked_keywords, ranked_scores = self._prune_candidates(candidates_no_duplication, keyword_scores, candidate_appearances)
-        ranked_keywords, ranked_scores = self._trim_keyword_list(ranked_keywords, ranked_scores, n_keywords)
+        
+        #Calculate the scores of each member word and from there, each candidate keyword
+        word_matrix = self._make_word_matrix(candidates, member_words)
+        word_scores = [max(row) for row in word_matrix]
+        candidates_no_duplication, keyword_scores, candidate_appearances = self._score_keywords(member_words, word_scores, candidates, appearances)
+        
+        #Prune and rank keywords
+        ranked_keywords, ranked_scores = self._prune_candidates(candidates_no_duplication, keyword_scores, candidate_appearances, n_keywords)
+        
         return ranked_keywords, ranked_scores
 
     #Identify all candidate keywords in a text, their member words, and their appearances
@@ -93,29 +128,16 @@ class FastRAKE(TopicExtractor):
 
         return candidates_no_duplication, keyword_scores, candidate_appearances
 
-    #Calculate the scores of each member word and from there, each candidate keyword
-    def _score_all(self, member_words, candidates, appearances):
-        
-        word_matrix = self._make_word_matrix(candidates, member_words)
-        word_scores = [max(row) for row in word_matrix]
-        candidates_no_duplication, keyword_scores, candidate_appearances = self._score_keywords(member_words, word_scores, candidates, appearances)
-        
-        return candidates_no_duplication, keyword_scores, candidate_appearances
+    def _prune_candidates(self, candidates_no_duplication, keyword_scores, candidate_appearances, n_keywords):
+        """Remove candidates that only appear once, and order candidates by score"""
 
-    #Remove candidates that only appear once, and order candidates by score
-    def _prune_candidates(self, candidates_no_duplication, keyword_scores, candidate_appearances):
-        
-        #Count the number of appearances for each candidate
         appear = [len(app) for app in candidate_appearances]
 
-        #Get indices for when appearances is more than 1
         compound_inds = [index for index, value in enumerate(appear) if value > 1]
         
-        #Trim lists to only contain the given indices
         candidates_no_duplication = [candidates_no_duplication[index] for index in compound_inds]
         keyword_scores = [keyword_scores[index] for index in compound_inds]
         
-        #Re-order the remaining candidates
         ranked_keywords = [key for score, key in
                               sorted(zip(keyword_scores, candidates_no_duplication), key=lambda score: score[0],
                                      reverse=True)]
@@ -123,11 +145,8 @@ class FastRAKE(TopicExtractor):
                               sorted(zip(keyword_scores, candidates_no_duplication), key=lambda score: score[0],
                                      reverse=True)]
         
-        return ranked_keywords, ranked_scores
-
-    #Trim a list of keywords and scores to a specified length
-    def _trim_keyword_list(self, ranked_keywords, ranked_scores, n_keywords):
         if len(ranked_keywords) > n_keywords:
             ranked_keywords = ranked_keywords[0:n_keywords]
             ranked_scores = ranked_scores[0:n_keywords]
+
         return ranked_keywords, ranked_scores
